@@ -29,7 +29,12 @@ body {
     align-items: center;
 }
 
-
+.red{
+    background-color: #d00;
+}
+.black{
+    background-color: #222;
+}
 .pawn {
     height: 40px;
     width: 40px;
