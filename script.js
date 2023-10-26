@@ -37,20 +37,20 @@ createBoard();
 function showMoves(pawn){
     let pawnPos = (pawn.parentElement.id);
     let pawnColor = pawn.className[5];
-    // console.log(pawn.parentElement.classList);
-    // console.log(pawnPos);
-    // console.log(pawnColor); //(pawnPos[0]-0) + 1;
     if(pawnColor == 'r'){
         let newX = (pawnPos[0]-0) + 1;
         let newY1 = (pawnPos[2]-0) + 1;
+        if(newY1 <= 7 && newY1 >= 0){
+            let pos1 = (newX + ',' + newY1);
+            let move1 = document.getElementById(pos1);
+            move1.style.backgroundColor = '#6c2525';
+        }
         let newY2 = (pawnPos[2]-0) - 1;
-        
-        let pos1 = (newX + ',' + newY1);
-        let move1 = document.getElementById(pos1);
-        let pos2 = (newX + ',' + newY2);
-        let move2 = document.getElementById(pos2);
-        move1.style.backgroundColor = '#6c2525';
-        move2.style.backgroundColor = '#6c2525';
+        if(newY2 <= 7 && newY2 >= 0){
+            let pos2 = (newX + ',' + newY2);
+            let move2 = document.getElementById(pos2);
+            move2.style.backgroundColor = '#6c2525';
+        }
     }
     else if(pawnColor =='b'){
 
@@ -66,14 +66,18 @@ function hideMoves(pawn){
     if(pawnColor == 'r'){
         let newX = (pawnPos[0]-0) + 1;
         let newY1 = (pawnPos[2]-0) + 1;
+        if(newY1 <= 7 && newY1 >= 0){
+            let pos1 = (newX + ',' + newY1);
+            let move1 = document.getElementById(pos1);
+            move1.style.backgroundColor = '#4a0303';
+        }
         let newY2 = (pawnPos[2]-0) - 1;
+        if(newY2 <= 7 && newY2 >= 0){
+            let pos2 = (newX + ',' + newY2);
+            let move2 = document.getElementById(pos2);
+            move2.style.backgroundColor = '#4a0303';
+        }
         
-        let pos1 = (newX + ',' + newY1);
-        let move1 = document.getElementById(pos1);
-        let pos2 = (newX + ',' + newY2);
-        let move2 = document.getElementById(pos2);
-        move1.style.backgroundColor = '#4a0303';
-        move2.style.backgroundColor = '#4a0303';
     }
     else if(pawnColor =='b'){
 
