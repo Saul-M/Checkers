@@ -4,7 +4,7 @@ var boardColorDark;
 var boardColorLight;
 var player1Color;
 var player2Color;
-
+var gameMode;
 var gameDisplay = document.getElementsByClassName('gameDisplay')[0];
 gameDisplay.style.display = 'none';
 
@@ -18,9 +18,10 @@ document.querySelector('form').addEventListener('submit', function(event) {
     boardColorLight = document.getElementById('lightSquareColor').value;
     player1Color = document.getElementById('player1Color').value;
     player2Color = document.getElementById('player2Color').value;
+    gameMode = document.querySelector('input[name="gameMode"]:checked').value;
 
     // Use the values
-    console.log(boardSize, boardColorDark, boardColorLight, player1Color, player2Color);
+    console.log(boardSize, boardColorDark, boardColorLight, player1Color, player2Color, gameMode);
     optionsDiv = document.getElementById('options');
     optionsDiv.innerHTML = "";
     startGame();
@@ -30,6 +31,21 @@ document.querySelector('form').addEventListener('submit', function(event) {
 function startGame(){
     gameDisplay.style.display = 'block';
 
+    console.log("original color",boardColorDark);
+    // Convert hex to RGB
+    var r = parseInt(boardColorDark.slice(1, 3), 16);
+    var g = parseInt(boardColorDark.slice(3, 5), 16);
+    var b = parseInt(boardColorDark.slice(5, 7), 16);
+
+    // Make the color lighter (you can adjust the values as needed)
+    var lighterR = Math.min(255, r + 80); // Increase the red value
+    var lighterG = Math.min(255, g + 80); // Increase the green value
+    var lighterB = Math.min(255, b + 80); // Increase the blue value
+
+    // Convert RGB back to hex
+    var highlightColor = '#' + (1 << 24 | lighterR << 16 | lighterG << 8 | lighterB).toString(16).slice(1);
+
+    console.log("new color",highlightColor);
     var rows;
     var columns;
     if(boardSize == '8x8'){
@@ -42,10 +58,11 @@ function startGame(){
     }
 
     var makingMove = false;
+    var isMoving = false;
     createBoard(rows, columns);
     makePawns(rows, columns);
     var allSquares = document.getElementsByClassName("square");
-    // colorBoard();
+    colorBoard();
     // console.log(allSquares);
     var gameBoard = [] 
     var blackPawns = []
@@ -54,12 +71,11 @@ function startGame(){
     var redPawns = []
     var redHtmlPawns = document.getElementsByClassName("red");
     //console.log(redHtmlPawns);
-    // colorPawns();
+    colorPawns();
 
     // global variables to keep track of game logic
     var currTurn = "red";
     var gPawn;
-    var currAttackedPawn = -1;
     var currAttackedPawns = [];
     var attackingSquares = [];
     var attackingSquare = -1;
@@ -72,6 +88,9 @@ function startGame(){
     let redPiecesDisplay = document.getElementById('redPiecesDisplay');
     let blackPiecesDisplay = document.getElementById('blackPiecesDisplay');
     let timer = document.getElementById('timerDisplay');
+    // Change innerHTML of the display elements
+    redPiecesDisplay.innerHTML = redPawns.length;
+    blackPiecesDisplay.innerHTML = blackPawns.length;
 
     // set color of the board based on inputs
     // loop through all squares and set the color
@@ -91,10 +110,10 @@ function startGame(){
     function colorPawns(){
         // set color of the pawns based on inputs
         for(let i = 0; i < blackHtmlPawns.length; i++){
-            blackHtmlPawns[i].style.backgroundColor = player1Color;
+            blackHtmlPawns[i].style.backgroundColor = player2Color;
         }
         for(let i = 0; i < redHtmlPawns.length; i++){
-            redHtmlPawns[i].style.backgroundColor = player2Color;
+            redHtmlPawns[i].style.backgroundColor = player1Color;
         }
     }
 
@@ -138,6 +157,7 @@ function startGame(){
             makingMove = false;
             console.log("trying to move to: ", clickedSquare);
             clickedSquare.appendChild(gPawn);
+            // //console.log(gPawn);
             // Check if the clicked square is in the list of attacking squares
             let index = attackingSquares.indexOf(clickedSquare);
             if(index != -1){
@@ -156,12 +176,12 @@ function startGame(){
                 }
                 // remove the pawn from the board
                 attackedPawn.parentNode.removeChild(attackedPawn);
-                // remove the attacked pawn and attacking square from the arrays
-                currAttackedPawns.splice(index, 1);
-                attackingSquares.splice(index, 1);
-            }
-        }
-    }
+                // reset the attacking square and attacked pawn arrays
+                currAttackedPawns = [];
+                attackingSquares = [];
+                attackingSquare = -1;
+
+            // check if the pawn can attack again
                 if(checkRetakes(clickedSquare)){
                     unhighlight();
                     console.log("can take again"); 
@@ -188,13 +208,57 @@ function startGame(){
             if(!makingMove){
                 unhighlight();
                 toggleTurn();
+                makeBlackMove();
                 checkGameOver();
             }
         }
-        // Change their innerHTML
+        // Change innerHTML of the display elements
         redPiecesDisplay.innerHTML = redPawns.length;
         blackPiecesDisplay.innerHTML = blackPawns.length;
     }
+
+    
+    function canMoveToSquare(currIndex, direction, enemyColor) {
+        // Get the ID of the square in the given direction
+        let newSquare = getSquare(currIndex, direction);
+    
+        // If the square exists (i.e., it's not off the board)
+        if(newSquare != -1){
+            // Get the HTML element of the square
+            let newSquareElement = document.getElementById(newSquare);
+    
+            // If the square is empty
+            if(!newSquareElement.hasChildNodes()){
+                // The pawn can move to this square
+                return true;
+            }
+            else{
+                // If the square is not empty, get the pawn in the square
+                let newSquarePawn = newSquareElement.firstChild;
+                // If the pawn in the square is an enemy pawn
+                if(newSquarePawn.classList.contains(enemyColor)){
+                    // Get the ID of the square in the given direction again
+                    let newSquare = getSquare(currIndex, direction);
+    
+                    // If the square exists
+                    if(newSquare != -1){
+                        // Get the HTML element of the square
+                        let newSquareElement = document.getElementById(newSquare);
+    
+                        // If the square is empty
+                        if(!newSquareElement.hasChildNodes()){
+                            // The pawn can move to this square
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+    
+        // If none of the above conditions were met, the pawn cannot move to the square
+        return false;
+    }
+
     var intervalId;
     let time = 0;
     function startTimer() {
@@ -220,7 +284,6 @@ function startGame(){
         if (square1 != -1) {
             // Get the element of the square one step away
             let square1Element = document.getElementById(square1);
-
             // Check if the square one step away has a child node (i.e., a pawn)
             if (square1Element.hasChildNodes()) {
                 // Check if the pawn in the square one step away is of the enemy color
@@ -323,8 +386,12 @@ function startGame(){
                         if (!square2Element.hasChildNodes()) {
                             // If all conditions are met, highlight the square two steps away and set the current attacked pawn and attacking square
                             square2Element.classList.replace('dark', 'highlight');
-                            currAttackedPawn = square1Element.firstChild;
-                            attackingSquare = square2Element;
+                            // change the color of the highlighted square
+                            highlightSquare(square2Element);
+                            // add the pawn to the array of attacked pawns
+                            currAttackedPawns.push(square1Element.firstChild);
+                            // add the square to the array of attacking squares
+                            attackingSquares.push(square2Element);
                             console.log("attackingSquare:", attackingSquare);
                         }
                     }
@@ -332,7 +399,10 @@ function startGame(){
             }
         }
     }
-    
+    function highlightSquare(square){
+        console.log("highlightSquaredsadasdasdasdasdasda", square);
+        square.style.backgroundColor = highlightColor;
+    }
     function highlightRedKingAttacks(currSquare) {
         tryHighlightAttack(currSquare, 'upLeft', 'upLeft', 'black');
         tryHighlightAttack(currSquare, 'upRight', 'upRight', 'black');
@@ -408,7 +478,12 @@ function startGame(){
         //console.log("unhighlighting");
         for(let j = 0; j < rows; j++){ 
             for(let i = 0; i < columns; i++){
+                // change the color of the highlighted square
+                if(gameBoard[j][i].id.classList.contains('highlight')){
+                    gameBoard[j][i].id.style.backgroundColor = boardColorDark;
+                }
                 gameBoard[j][i].id.classList.replace('highlight', 'dark');
+                
             }
         }
     }
@@ -440,7 +515,7 @@ function startGame(){
         else{
             currTurn = 'black';
         }
-        //console.log("current turn:",currTurn);
+        console.log("called current turn:",currTurn);
         let turnDisplay = document.getElementById('turnDisplay');
         turnDisplay.innerHTML = currTurn;
     }
@@ -470,6 +545,8 @@ function startGame(){
                         if (!square2Element.hasChildNodes()) {
                             // If all conditions are met, highlight the square two steps away and set the current attacked pawn and attacking square     
                             square2Element.classList.replace('dark', 'highlight');
+                            // change the color of the highlighted square
+                            highlightSquare(square2Element);
                             currAttackedPawns.push(square1Element.firstChild);
                             attackingSquares.push(square2Element);
                         }
@@ -478,6 +555,8 @@ function startGame(){
             } else {
                 // If the square one step away is empty, highlight it
                 square1Element.classList.replace('dark', 'highlight');
+                // change the color of the highlighted square
+                highlightSquare(square1Element);
             }
         }
     }
@@ -500,6 +579,7 @@ function startGame(){
         tryHighlight(sqr, 'downLeft', 'downLeft', 'red');
         tryHighlight(sqr, 'downRight', 'downRight', 'red');
     }
+
 
     function highlightRed(sqr) {
         tryHighlight(sqr, 'upLeft', 'upLeft', 'black');
@@ -680,4 +760,17 @@ function startGame(){
         //console.log(redPawns);
     }
     createPawnArrays();
+}
+
+
+function makeBlackMove(){
+    console.log("makeBlackMove");
+    // get all black pawns that can move
+    let movableBlackPawns = []
+    for(let i = 0; i < blackPawns.length; i++){
+        if(canMoveBlack(blackPawns[i])){
+            movableBlackPawns.push(blackPawns[i]);
+        }
+    }
+    console.log("movableBlackPawns", movableBlackPawns);
 }
