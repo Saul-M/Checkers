@@ -45,7 +45,7 @@ function startGame(){
     createBoard(rows, columns);
     makePawns(rows, columns);
     var allSquares = document.getElementsByClassName("square");
-    colorBoard();
+    // colorBoard();
     // console.log(allSquares);
     var gameBoard = [] 
     var blackPawns = []
@@ -54,14 +54,15 @@ function startGame(){
     var redPawns = []
     var redHtmlPawns = document.getElementsByClassName("red");
     //console.log(redHtmlPawns);
-    colorPawns();
+    // colorPawns();
 
     // global variables to keep track of game logic
     var currTurn = "red";
     var gPawn;
     var currAttackedPawn = -1;
+    var currAttackedPawns = [];
+    var attackingSquares = [];
     var attackingSquare = -1;
-    var highlighted = false;
     // make the board the right size with css
     let board = document.getElementById('board');
     board.style.gridTemplateColumns = `repeat(${columns}, 50px)`;
@@ -128,17 +129,6 @@ function startGame(){
         }
     };
 
-        // log every variable used in the function
-        // //console.log("makingMove: " + makingMove);
-        // //console.log("currAttackedPawn: " + currAttackedPawn);
-        // //console.log("attackingSquare: " + attackingSquare);
-        // //console.log("currTurn: " + currTurn);
-        // //console.log("gPawn: " + gPawn);
-        // //console.log("clickedSquare: " + clickedSquare);
-        // //console.log("currAttackedPawn: " + currAttackedPawn);
-        // //console.log("attackingSquare: " + attackingSquare);
-        // //console.log("~~~~~~~~~~~~~~~~~~~");
-
     function moveTo(clickedSquare){
         console.log("moveTo called");
         console.log("makingMove:", makingMove);
@@ -148,34 +138,30 @@ function startGame(){
             makingMove = false;
             console.log("trying to move to: ", clickedSquare);
             clickedSquare.appendChild(gPawn);
-            // //console.log(gPawn);
-            if(currAttackedPawn != -1 && clickedSquare == attackingSquare){
-                // remove the pawn from the array
-                if(currAttackedPawn.classList.contains('black')){
+            // Check if the clicked square is in the list of attacking squares
+            let index = attackingSquares.indexOf(clickedSquare);
+            if(index != -1){
+                // If it is, remove the corresponding attacked pawn
+                let attackedPawn = currAttackedPawns[index];
+                if(attackedPawn.classList.contains('black')){
                     console.log("removing black pawn");
-                    for(let i = 0; i < blackPawns.length; i++){
-                        console.log("current id:", blackPawns[i].id);
-                        if(blackPawns[i].id == currAttackedPawn){
-                            blackPawns.splice(i, 1);
-                            console.log("blackPawns", blackPawns);
-                        }
-                    }
+                    let pawnIndex = blackPawns.indexOf(attackedPawn);
+                    blackPawns.splice(pawnIndex, 1);
+                    console.log("blackPawns", blackPawns);
                 }
-                else if(currAttackedPawn.classList.contains('red')){
+                else if(attackedPawn.classList.contains('red')){
                     console.log("removing red pawn");
-                    for(let i = 0; i < redPawns.length; i++){
-                        console.log("current id:", redPawns[i].id);
-                        if(redPawns[i].id == currAttackedPawn){
-                            redPawns.splice(i, 1);
-                            console.log("redPawns", redPawns);
-                        }
-                    }
+                    let pawnIndex = redPawns.indexOf(attackedPawn);
+                    redPawns.splice(pawnIndex, 1);
                 }
                 // remove the pawn from the board
-                currAttackedPawn.parentNode.removeChild(currAttackedPawn);
-                currAttackedPawn = -1;
-                attackingSquare = -1;
-                // check if we can take again
+                attackedPawn.parentNode.removeChild(attackedPawn);
+                // remove the attacked pawn and attacking square from the arrays
+                currAttackedPawns.splice(index, 1);
+                attackingSquares.splice(index, 1);
+            }
+        }
+    }
                 if(checkRetakes(clickedSquare)){
                     unhighlight();
                     console.log("can take again"); 
@@ -205,7 +191,6 @@ function startGame(){
                 checkGameOver();
             }
         }
-
         // Change their innerHTML
         redPiecesDisplay.innerHTML = redPawns.length;
         blackPiecesDisplay.innerHTML = blackPawns.length;
@@ -225,82 +210,63 @@ function startGame(){
     }
     startTimer();
 
-    function checkBlackKingAttacks(currSquare){
-        // get all potential squares that could be highlighted
-        let upLeft = getSquare(currSquare.id, 'upLeft');
-        let upRight = getSquare(currSquare.id, 'upRight');
-        let downLeft = getSquare(currSquare.id, 'downLeft');
-        let downRight = getSquare(currSquare.id, 'downRight');
-        let upLeftAtk = getSquare(upLeft, 'upLeft');
-        let upRightAtk = getSquare(upRight, 'upRight');
-        let downLeftAtk = getSquare(downLeft, 'downLeft');
-        let downRightAtk = getSquare(downRight, 'downRight');
-        // if upLeft is valid
-        if(upLeft != -1){
-            // if upLeft has a pawn in it
-            if(document.getElementById(upLeft).hasChildNodes()){
-                // if the pawn in upLeft is red (enemy)
-                if(document.getElementById(upLeft).firstChild.classList.contains('red')){
-                    // if upLeftAtk is a valid square
-                    if(upLeftAtk != -1){
-                        // if upLeftAtk is empty
-                        if(document.getElementById(upLeftAtk).hasChildNodes() == false){
+    function canAttack(currSquare, direction1, direction2, enemyColor) {
+        // Get the ID of the square one step away in the given direction
+        let square1 = getSquare(currSquare.id, direction1);
+        // Get the ID of the square two steps away in the given direction
+        let square2 = getSquare(square1, direction2);
+
+        // Check if the square one step away is valid
+        if (square1 != -1) {
+            // Get the element of the square one step away
+            let square1Element = document.getElementById(square1);
+
+            // Check if the square one step away has a child node (i.e., a pawn)
+            if (square1Element.hasChildNodes()) {
+                // Check if the pawn in the square one step away is of the enemy color
+                if (square1Element.firstChild.classList.contains(enemyColor)) {
+                    // Check if the square two steps away is valid
+                    if (square2 != -1) {
+                        // Get the element of the square two steps away
+                        let square2Element = document.getElementById(square2);
+
+                        // Check if the square two steps away doesn't have a child node (i.e., is empty)
+                        if (!square2Element.hasChildNodes()) {
+                            // If all conditions are met, the pawn can attack
                             return true;
                         }
                     }
                 }
             }
         }
-        // if upRight is valid
-        if(upRight != -1){
-            // if upRight has a pawn in it
-            if(document.getElementById(upRight).hasChildNodes()){
-                // if the pawn in upRight is red
-                if(document.getElementById(upRight).firstChild.classList.contains('red')){
-                    // if upRightAtk is a valid square
-                    if(upRightAtk != -1){
-                        // if upRightAtk is empty
-                        if(document.getElementById(upRightAtk).hasChildNodes() == false){
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        // if downLeft is valid
-        if(downLeft != -1){
-            // if downLeft has a pawn in it
-            if(document.getElementById(downLeft).hasChildNodes()){
-                // if the pawn in downLeft is red
-                if(document.getElementById(downLeft).firstChild.classList.contains('red')){
-                    // if downLeftAtk is a valid square
-                    if(downLeftAtk != -1){
-                        // if downLeftAtk is empty
-                        if(document.getElementById(downLeftAtk).hasChildNodes() == false){
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        // if downRight is valid
-        if(downRight != -1){
-            // if downRight has a pawn in it
-            if(document.getElementById(downRight).hasChildNodes()){
-                // if the pawn in downRight is red
-                if(document.getElementById(downRight).firstChild.classList.contains('red')){
-                    // if downRightAtk is a valid square
-                    if(downRightAtk != -1){
-                        // if downRightAtk is empty
-                        if(document.getElementById(downRightAtk).hasChildNodes() == false){
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
+        // If any of the conditions is not met, the pawn can't attack
         return false;
     }
+    
+    function checkBlackKingAttacks(currSquare) {
+        return canAttack(currSquare, 'upLeft', 'upLeft', 'red') ||
+               canAttack(currSquare, 'upRight', 'upRight', 'red') ||
+               canAttack(currSquare, 'downLeft', 'downLeft', 'red') ||
+               canAttack(currSquare, 'downRight', 'downRight', 'red');
+    }
+    
+    function checkRedKingAttacks(currSquare) {
+        return canAttack(currSquare, 'upLeft', 'upLeft', 'black') ||
+               canAttack(currSquare, 'upRight', 'upRight', 'black') ||
+               canAttack(currSquare, 'downLeft', 'downLeft', 'black') ||
+               canAttack(currSquare, 'downRight', 'downRight', 'black');
+    }
+    
+    function checkBlackPawnAttacks(currSquare) {
+        return canAttack(currSquare, 'downLeft', 'downLeft', 'red') ||
+               canAttack(currSquare, 'downRight', 'downRight', 'red');
+    }
+    
+    function checkRedPawnAttacks(currSquare) {
+        return canAttack(currSquare, 'upLeft', 'upLeft', 'black') ||
+               canAttack(currSquare, 'upRight', 'upRight', 'black');
+    }
+
     function checkRetakes(clickedSquare){
         console.log("checkRetakes");
         //if the pawn is a red king
@@ -329,248 +295,36 @@ function startGame(){
         }
 
     }
-    function checkRedPawnAttacks(currSquare){
-        // get all potential squares that could be highlighted
-        let upLeft = getSquare(currSquare.id, 'upLeft');
-        let upRight = getSquare(currSquare.id, 'upRight');
-        let upLeftAtk = getSquare(upLeft, 'upLeft');
-        let upRightAtk = getSquare(upRight, 'upRight');
-        // if upLeft is valid
-        if(upLeft != -1){
-            // if upLeft has a pawn in it
-            if(document.getElementById(upLeft).hasChildNodes()){
-                // if the pawn in upLeft is black (enemy)
-                if(document.getElementById(upLeft).firstChild.classList.contains('black')){
-                    // if upLeftAtk is a valid square
-                    if(upLeftAtk != -1){
-                        // if upLeftAtk is empty
-                        if(document.getElementById(upLeftAtk).hasChildNodes() == false){
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        // if upRight is valid
-        if(upRight != -1){
-            // if upRight has a pawn in it
-            if(document.getElementById(upRight).hasChildNodes()){
-                // if the pawn in upRight is black
-                if(document.getElementById(upRight).firstChild.classList.contains('black')){
-                    // if upRightAtk is a valid square
-                    if(upRightAtk != -1){
-                        // if upRightAtk is empty
-                        if(document.getElementById(upRightAtk).hasChildNodes() == false){
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        return false;
-    }
 
-    function checkBlackPawnAttacks(currSquare){
-        // get all potential squares that could be highlighted
-        let downLeft = getSquare(currSquare.id, 'downLeft');
-        let downRight = getSquare(currSquare.id, 'downRight');
-        let downLeftAtk = getSquare(downLeft, 'downLeft');
-        let downRightAtk = getSquare(downRight, 'downRight');
-        // if downLeft is valid
-        if(downLeft != -1){
-            // if downLeft has a pawn in it
-            if(document.getElementById(downLeft).hasChildNodes()){
-                // if the pawn in downLeft is red (enemy)
-                if(document.getElementById(downLeft).firstChild.classList.contains('red')){
-                    // if downLeftAtk is a valid square
-                    if(downLeftAtk != -1){
-                        // if downLeftAtk is empty
-                        if(document.getElementById(downLeftAtk).hasChildNodes() == false){
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        // if downRight is valid
-        if(downRight != -1){
-            // if downRight has a pawn in it
-            if(document.getElementById(downRight).hasChildNodes()){
-                // if the pawn in downRight is red
-                if(document.getElementById(downRight).firstChild.classList.contains('red')){
-                    // if downRightAtk is a valid square
-                    if(downRightAtk != -1){
-                        // if downRightAtk is empty
-                        if(document.getElementById(downRightAtk).hasChildNodes() == false){
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        return false;
-    }
-    function checkRedKingAttacks(currSquare){
-        // get all potential squares that could be highlighted
-        let upLeft = getSquare(currSquare.id, 'upLeft');
-        let upRight = getSquare(currSquare.id, 'upRight');
-        let downLeft = getSquare(currSquare.id, 'downLeft');
-        let downRight = getSquare(currSquare.id, 'downRight');
-        let upLeftAtk = getSquare(upLeft, 'upLeft');
-        let upRightAtk = getSquare(upRight, 'upRight');
-        let downLeftAtk = getSquare(downLeft, 'downLeft');
-        let downRightAtk = getSquare(downRight, 'downRight');
-        // if upLeft is valid
-        if(upLeft != -1){
-            // if upLeft has a pawn in it
-            if(document.getElementById(upLeft).hasChildNodes()){
-                // if the pawn in upLeft is black (enemy)
-                if(document.getElementById(upLeft).firstChild.classList.contains('black')){
-                    // if upLeftAtk is a valid square
-                    if(upLeftAtk != -1){
-                        // if upLeftAtk is empty
-                        if(document.getElementById(upLeftAtk).hasChildNodes() == false){
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        // if upRight is valid
-        if(upRight != -1){
-            // if upRight has a pawn in it
-            if(document.getElementById(upRight).hasChildNodes()){
-                // if the pawn in upRight is black
-                if(document.getElementById(upRight).firstChild.classList.contains('black')){
-                    // if upRightAtk is a valid square
-                    if(upRightAtk != -1){
-                        // if upRightAtk is empty
-                        if(document.getElementById(upRightAtk).hasChildNodes() == false){
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        // if downLeft is valid
-        if(downLeft != -1){
-            // if downLeft has a pawn in it
-            if(document.getElementById(downLeft).hasChildNodes()){
-                // if the pawn in downLeft is black
-                if(document.getElementById(downLeft).firstChild.classList.contains('black')){
-                    // if downLeftAtk is a valid square
-                    if(downLeftAtk != -1){
-                        // if downLeftAtk is empty
-                        if(document.getElementById(downLeftAtk).hasChildNodes() == false){
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        // if downRight is valid
-        if(downRight != -1){
-            // if downRight has a pawn in it
-            if(document.getElementById(downRight).hasChildNodes()){
-                // if the pawn in downRight is black
-                if(document.getElementById(downRight).firstChild.classList.contains('black')){
-                    // if downRightAtk is a valid square
-                    if(downRightAtk != -1){
-                        // if downRightAtk is empty
-                        if(document.getElementById(downRightAtk).hasChildNodes() == false){
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        return false;
-    }
+    function tryHighlightAttack(currSquare, direction1, direction2, color) {
+        console.log("tryHighlightAttack");
 
-    function highlightRedKingAttacks(currSquare){
-        // get all potential squares that could be highlighted
-        let upLeft = getSquare(currSquare.id, 'upLeft');
-        let upRight = getSquare(currSquare.id, 'upRight');
-        let downLeft = getSquare(currSquare.id, 'downLeft');
-        let downRight = getSquare(currSquare.id, 'downRight');
-        let upLeftAtk = getSquare(upLeft, 'upLeft');
-        let upRightAtk = getSquare(upRight, 'upRight');
-        let downLeftAtk = getSquare(downLeft, 'downLeft');
-        let downRightAtk = getSquare(downRight, 'downRight');
-        // if upLeft is valid
-        if(upLeft != -1){
-            // if upLeft has a pawn in it
-            if(document.getElementById(upLeft).hasChildNodes()){
-                // if the pawn in upLeft is black (enemy)
-                if(document.getElementById(upLeft).firstChild.classList.contains('black')){
-                    // if upLeftAtk is a valid square
-                    if(upLeftAtk != -1){
-                        // if upLeftAtk is empty
-                        if(document.getElementById(upLeftAtk).hasChildNodes() == false){
-                            // highlight upLeftAtk
-                            document.getElementById(upLeftAtk).classList.replace('dark', 'highlight');
-                            currAttackedPawn = document.getElementById(upLeft).firstChild;
-                            attackingSquare = document.getElementById(upLeftAtk);
-                            console.log("attackingSquare:", attackingSquare);
-                        }
-                    }
-                }
-            }
-        }
-        // if upRight is valid
-        if(upRight != -1){
-            // if upRight has a pawn in it
-            if(document.getElementById(upRight).hasChildNodes()){
-                // if the pawn in upRight is black
-                if(document.getElementById(upRight).firstChild.classList.contains('black')){
-                    // if upRightAtk is a valid square
-                    if(upRightAtk != -1){
-                        // if upRightAtk is empty
-                        if(document.getElementById(upRightAtk).hasChildNodes() == false){
-                            // highlight upRightAtk
-                            document.getElementById(upRightAtk).classList.replace('dark', 'highlight');
-                            currAttackedPawn = document.getElementById(upRight).firstChild;
-                            attackingSquare = document.getElementById(upRightAtk);
-                            console.log("attackingSquare:", attackingSquare);
-                        }
-                    }
-                }
-            }
-        }
-        // if downLeft is valid
-        if(downLeft != -1){
-            // if downLeft has a pawn in it
-            if(document.getElementById(downLeft).hasChildNodes()){
-                // if the pawn in downLeft is black
-                if(document.getElementById(downLeft).firstChild.classList.contains('black')){
-                    // if downLeftAtk is a valid square
-                    if(downLeftAtk != -1){
-                        // if downLeftAtk is empty
-                        if(document.getElementById(downLeftAtk).hasChildNodes() == false){
-                            // highlight downLeftAtk
-                            document.getElementById(downLeftAtk).classList.replace('dark', 'highlight');
-                            currAttackedPawn = document.getElementById(downLeft).firstChild;
-                            attackingSquare = document.getElementById(downLeftAtk);
-                            console.log("attackingSquare:", attackingSquare);
-                        }
-                    }
-                }
-            }
-        }
-        // if downRight is valid
-        if(downRight != -1){
-            // if downRight has a pawn in it
-            if(document.getElementById(downRight).hasChildNodes()){
-                // if the pawn in downRight is black
-                if(document.getElementById(downRight).firstChild.classList.contains('black')){
-                    // if downRightAtk is a valid square
-                    if(downRightAtk != -1){
-                        // if downRightAtk is empty
-                        if(document.getElementById(downRightAtk).hasChildNodes() == false){
-                            // highlight downRightAtk
-                            document.getElementById(downRightAtk).classList.replace('dark', 'highlight');
-                            currAttackedPawn = document.getElementById(downRight).firstChild;
-                            attackingSquare = document.getElementById(downRightAtk);
+        // Get the ID of the square one step away in the given direction
+        let square1 = getSquare(currSquare.id, direction1);
+
+        // Check if the square one step away is valid
+        if (square1 != -1) {
+            // Get the element of the square one step away
+            let square1Element = document.getElementById(square1);
+
+            // Check if the square one step away has a child node (i.e., a pawn)
+            if (square1Element.hasChildNodes()) {
+                // Check if the pawn in the square one step away is of the specified color
+                if (square1Element.firstChild.classList.contains(color)) {
+                    // Get the ID of the square two steps away in the given direction
+                    let square2 = getSquare(square1, direction2);
+
+                    // Check if the square two steps away is valid
+                    if (square2 != -1) {
+                        // Get the element of the square two steps away
+                        let square2Element = document.getElementById(square2);
+
+                        // Check if the square two steps away doesn't have a child node (i.e., is empty)
+                        if (!square2Element.hasChildNodes()) {
+                            // If all conditions are met, highlight the square two steps away and set the current attacked pawn and attacking square
+                            square2Element.classList.replace('dark', 'highlight');
+                            currAttackedPawn = square1Element.firstChild;
+                            attackingSquare = square2Element;
                             console.log("attackingSquare:", attackingSquare);
                         }
                     }
@@ -578,194 +332,30 @@ function startGame(){
             }
         }
     }
-
-    function highlightBlackKingAttacks(currSquare){
-        // get all potential squares that could be highlighted
-        let upLeft = getSquare(currSquare.id, 'upLeft');
-        let upRight = getSquare(currSquare.id, 'upRight');
-        let downLeft = getSquare(currSquare.id, 'downLeft');
-        let downRight = getSquare(currSquare.id, 'downRight');
-        let upLeftAtk = getSquare(upLeft, 'upLeft');
-        let upRightAtk = getSquare(upRight, 'upRight');
-        let downLeftAtk = getSquare(downLeft, 'downLeft');
-        let downRightAtk = getSquare(downRight, 'downRight');
-        // if upLeft is valid
-        if(upLeft != -1){
-            // if upLeft has a pawn in it
-            if(document.getElementById(upLeft).hasChildNodes()){
-                // if the pawn in upLeft is red (enemy)
-                if(document.getElementById(upLeft).firstChild.classList.contains('red')){
-                    // if upLeftAtk is a valid square
-                    if(upLeftAtk != -1){
-                        // if upLeftAtk is empty
-                        if(document.getElementById(upLeftAtk).hasChildNodes() == false){
-                            // highlight upLeftAtk
-                            document.getElementById(upLeftAtk).classList.replace('dark', 'highlight');
-                            currAttackedPawn = document.getElementById(upLeft).firstChild;
-                            attackingSquare = document.getElementById(upLeftAtk);
-                            console.log("attackingSquare:", attackingSquare);
-                        }
-                    }
-                }
-            }
-        }
-        // if upRight is valid
-        if(upRight != -1){
-            // if upRight has a pawn in it
-            if(document.getElementById(upRight).hasChildNodes()){
-                // if the pawn in upRight is red
-                if(document.getElementById(upRight).firstChild.classList.contains('red')){
-                    // if upRightAtk is a valid square
-                    if(upRightAtk != -1){
-                        // if upRightAtk is empty
-                        if(document.getElementById(upRightAtk).hasChildNodes() == false){
-                            // highlight upRightAtk
-                            document.getElementById(upRightAtk).classList.replace('dark', 'highlight');
-                            currAttackedPawn = document.getElementById(upRight).firstChild;
-                            attackingSquare = document.getElementById(upRightAtk);
-                            console.log("attackingSquare:", attackingSquare);
-                        }
-                    }
-                }
-            }
-        }
-        // if downLeft is valid
-        if(downLeft != -1){
-            // if downLeft has a pawn in it
-            if(document.getElementById(downLeft).hasChildNodes()){
-                // if the pawn in downLeft is red
-                if(document.getElementById(downLeft).firstChild.classList.contains('red')){
-                    // if downLeftAtk is a valid square
-                    if(downLeftAtk != -1){
-                        // if downLeftAtk is empty
-                        if(document.getElementById(downLeftAtk).hasChildNodes() == false){
-                            // highlight downLeftAtk
-                            document.getElementById(downLeftAtk).classList.replace('dark', 'highlight');
-                            currAttackedPawn = document.getElementById(downLeft).firstChild;
-                            attackingSquare = document.getElementById(downLeftAtk);
-                            console.log("attackingSquare:", attackingSquare);
-                        }
-                    }
-                }
-            }
-        }
-        // if downRight is valid
-        if(downRight != -1){
-            // if downRight has a pawn in it
-            if(document.getElementById(downRight).hasChildNodes()){
-                // if the pawn in downRight is red
-                if(document.getElementById(downRight).firstChild.classList.contains('red')){
-                    // if downRightAtk is a valid square
-                    if(downRightAtk != -1){
-                        // if downRightAtk is empty
-                        if(document.getElementById(downRightAtk).hasChildNodes() == false){
-                            // highlight downRightAtk
-                            document.getElementById(downRightAtk).classList.replace('dark', 'highlight');
-                            currAttackedPawn = document.getElementById(downRight).firstChild;
-                            attackingSquare = document.getElementById(downRightAtk);
-                            console.log("attackingSquare:", attackingSquare);
-                        }
-                    }
-                }
-            }
-        }
+    
+    function highlightRedKingAttacks(currSquare) {
+        tryHighlightAttack(currSquare, 'upLeft', 'upLeft', 'black');
+        tryHighlightAttack(currSquare, 'upRight', 'upRight', 'black');
+        tryHighlightAttack(currSquare, 'downLeft', 'downLeft', 'black');
+        tryHighlightAttack(currSquare, 'downRight', 'downRight', 'black');
     }
-
+    
+    function highlightBlackKingAttacks(currSquare) {
+        tryHighlightAttack(currSquare, 'upLeft', 'upLeft', 'red');
+        tryHighlightAttack(currSquare, 'upRight', 'upRight', 'red');
+        tryHighlightAttack(currSquare, 'downLeft', 'downLeft', 'red');
+        tryHighlightAttack(currSquare, 'downRight', 'downRight', 'red');
+    }
+    
     function highlightBlackPawnAttacks(currSquare){
-        // get all potential squares that could be highlighted
-        let downLeft = getSquare(currSquare.id, 'downLeft');
-        let downRight = getSquare(currSquare.id, 'downRight');
-        let downLeftAtk = getSquare(downLeft, 'downLeft');
-        let downRightAtk = getSquare(downRight, 'downRight');
-        // if downLeft is valid
-        if(downLeft != -1){
-            // if downLeft has a pawn in it
-            if(document.getElementById(downLeft).hasChildNodes()){
-                // if the pawn in downLeft is red (enemy)
-                if(document.getElementById(downLeft).firstChild.classList.contains('red')){
-                    // if downLeftAtk is a valid square
-                    if(downLeftAtk != -1){
-                        // if downLeftAtk is empty
-                        if(document.getElementById(downLeftAtk).hasChildNodes() == false){
-                            // highlight downLeftAtk
-                            document.getElementById(downLeftAtk).classList.replace('dark', 'highlight');
-                            currAttackedPawn = document.getElementById(downLeft).firstChild;
-                            attackingSquare = document.getElementById(downLeftAtk);
-                            console.log("attackingSquare:", attackingSquare);
-                        }
-                    }
-                }
-            }
-        }
-        // if downRight is valid
-        if(downRight != -1){
-            // if downRight has a pawn in it
-            if(document.getElementById(downRight).hasChildNodes()){
-                // if the pawn in downRight is red
-                if(document.getElementById(downRight).firstChild.classList.contains('red')){
-                    // if downRightAtk is a valid square
-                    if(downRightAtk != -1){
-                        // if downRightAtk is empty
-                        if(document.getElementById(downRightAtk).hasChildNodes() == false){
-                            // highlight downRightAtk
-                            document.getElementById(downRightAtk).classList.replace('dark', 'highlight');
-                            currAttackedPawn = document.getElementById(downRight).firstChild;
-                            attackingSquare = document.getElementById(downRightAtk);
-                            console.log("attackingSquare:", attackingSquare);
-                        }
-                    }
-                }
-            }
-        }
+        tryHighlightAttack(currSquare, 'downLeft', 'downLeft', 'red');
+        tryHighlightAttack(currSquare, 'downRight', 'downRight', 'red');
     }
+    
     function highlightRedPawnAttacks(currSquare){
-        // get all potential squares that could be highlighted
-        let upLeft = getSquare(currSquare.id, 'upLeft');
-        let upRight = getSquare(currSquare.id, 'upRight');
-        let upLeftAtk = getSquare(upLeft, 'upLeft');
-        let upRightAtk = getSquare(upRight, 'upRight');
-        // if upLeft is valid
-        if(upLeft != -1){
-            // if upLeft has a pawn in it
-            if(document.getElementById(upLeft).hasChildNodes()){
-                // if the pawn in upLeft is black (enemy)
-                if(document.getElementById(upLeft).firstChild.classList.contains('black')){
-                    // if upLeftAtk is a valid square
-                    if(upLeftAtk != -1){
-                        // if upLeftAtk is empty
-                        if(document.getElementById(upLeftAtk).hasChildNodes() == false){
-                            // highlight upLeftAtk
-                            document.getElementById(upLeftAtk).classList.replace('dark', 'highlight');
-                            currAttackedPawn = document.getElementById(upLeft).firstChild;
-                            attackingSquare = document.getElementById(upLeftAtk);
-                            console.log("attackingSquare:", attackingSquare);
-                        }
-                    }
-                }
-            }
-        }
-        // if upRight is valid
-        if(upRight != -1){
-            // if upRight has a pawn in it
-            if(document.getElementById(upRight).hasChildNodes()){
-                // if the pawn in upRight is black
-                if(document.getElementById(upRight).firstChild.classList.contains('black')){
-                    // if upRightAtk is a valid square
-                    if(upRightAtk != -1){
-                        // if upRightAtk is empty
-                        if(document.getElementById(upRightAtk).hasChildNodes() == false){
-                            // highlight upRightAtk
-                            document.getElementById(upRightAtk).classList.replace('dark', 'highlight');
-                            currAttackedPawn = document.getElementById(upRight).firstChild;
-                            attackingSquare = document.getElementById(upRightAtk);
-                            console.log("attackingSquare:", attackingSquare);
-                        }
-                    }
-                }
-            }
-        }
+        tryHighlightAttack(currSquare, 'upLeft', 'upLeft', 'black');
+        tryHighlightAttack(currSquare, 'upRight', 'upRight', 'black');
     }
-
 
     function highlightRetakes(){
         console.log("highlightRetakes");
@@ -833,116 +423,15 @@ function startGame(){
             alert("Red wins! There are no more black pawns");
         }
         // if there are no more moves for red, black wins
-        else if(!redPawns.some(canMoveRed)){
-            console.log("no moves for red");
-            alert("Black wins! There are no more moves for red");
-        }
-        // if there are no more moves for black, red wins
-        else if(!blackPawns.some(canMoveBlack)){
-            console.log("no moves for black");
-            alert("Red wins! There are no more moves for black");
-        }
-    }
-    function canMoveRed(pawn){
-        //console.log(pawn);
-        pawnId = pawn.square;
-        // get all potential squares that could be highlighted
-        let upLeft = getSquare(pawnId, 'upLeft');
-        let upRight = getSquare(pawnId, 'upRight');
-        let upLeftAtk = getSquare(upLeft, 'upLeft');
-        let upRightAtk = getSquare(upRight, 'upRight');
-        // if upLeft is valid
-        if(upLeft != -1){
-            // if upLeft is empty
-            if(document.getElementById(upLeft).hasChildNodes() == false){
-                return true;
-            }
-            // if upLeft has a pawn in it
-            else{
-                // if the pawn in upLeft is black
-                if(document.getElementById(upLeft).firstChild.classList.contains('black')){
-                    // if upLeftAtk is a valid square
-                    if(upLeftAtk != -1){
-                        // if upLeftAtk is empty
-                        if(document.getElementById(upLeftAtk).hasChildNodes() == false){
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        // if upRight is valid
-        if(upRight != -1){
-            // if upRight is empty
-            if(document.getElementById(upRight).hasChildNodes() == false){
-                return true;
-            }
-            // if upRight has a pawn in it
-            else{
-                // if the pawn in upRight is black
-                if(document.getElementById(upRight).firstChild.classList.contains('black')){
-                    // if upRightAtk is a valid square
-                    if(upRightAtk != -1){
-                        // if upRightAtk is empty
-                        if(document.getElementById(upRightAtk).hasChildNodes() == false){
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
-    function canMoveBlack(pawn){
-        pawnId = pawn.square;
-        //console.log(pawnId);
-        // get all potential squares that could be highlighted
-        let downLeft = getSquare(pawnId, 'downLeft');
-        let downRight = getSquare(pawnId, 'downRight');
-        let downLeftAtk = getSquare(downLeft, 'downLeft');
-        let downRightAtk = getSquare(downRight, 'downRight');
-        // if downLeft is valid
-        if(downLeft != -1){
-            // if downLeft is empty
-            if(document.getElementById(downLeft).hasChildNodes() == false){
-                return true;
-            }
-            // if downLeft has a pawn in it
-            else{
-                // if the pawn in downLeft is red
-                if(document.getElementById(downLeft).firstChild.classList.contains('red')){
-                    // if downLeftAtk is a valid square
-                    if(downLeftAtk != -1){
-                        // if downLeftAtk is empty
-                        if(document.getElementById(downLeftAtk).hasChildNodes() == false){
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        // if downRight is valid
-        if(downRight != -1){
-            // if downRight is empty
-            if(document.getElementById(downRight).hasChildNodes() == false){
-                return true;
-            }
-            // if downRight has a pawn in it
-            else{
-                // if the pawn in downRight is red
-                if(document.getElementById(downRight).firstChild.classList.contains('red')){
-                    // if downRightAtk is a valid square
-                    if(downRightAtk != -1){
-                        // if downRightAtk is empty
-                        if(document.getElementById(downRightAtk).hasChildNodes() == false){
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        return false;
+        // else if(!redPawns.some(canMoveRed)){
+        //     console.log("no moves for red");
+        //     alert("Black wins! There are no more moves for red");
+        // }
+        // // if there are no more moves for black, red wins
+        // else if(!blackPawns.some(canMoveBlack)){
+        //     console.log("no moves for black");
+        //     alert("Red wins! There are no more moves for black");
+        // }
     }
     function toggleTurn(){
         if(currTurn == 'black'){
@@ -956,313 +445,66 @@ function startGame(){
         turnDisplay.innerHTML = currTurn;
     }
 
+    function tryHighlight(sqr, direction1, direction2, enemyColor) {
+        // Get the ID of the square one step away in the given direction
+        let square1 = getSquare(sqr.id, direction1);
+
+        // Get the ID of the square two steps away in the given direction
+        let square2 = getSquare(square1, direction2);
+
+        // Check if the square one step away is valid
+        if (square1 != -1) {
+            // Get the element of the square one step away
+            let square1Element = document.getElementById(square1);
+
+            // Check if the square one step away has a child node (i.e., a pawn)
+            if (square1Element.hasChildNodes()) {
+                // Check if the pawn in the square one step away is of the enemy color
+                if (square1Element.firstChild.classList.contains(enemyColor)) {
+                    // Check if the square two steps away is valid
+                    if (square2 != -1) {
+                        // Get the element of the square two steps away
+                        let square2Element = document.getElementById(square2);
+
+                        // Check if the square two steps away doesn't have a child node (i.e., is empty)
+                        if (!square2Element.hasChildNodes()) {
+                            // If all conditions are met, highlight the square two steps away and set the current attacked pawn and attacking square     
+                            square2Element.classList.replace('dark', 'highlight');
+                            currAttackedPawns.push(square1Element.firstChild);
+                            attackingSquares.push(square2Element);
+                        }
+                    }
+                }
+            } else {
+                // If the square one step away is empty, highlight it
+                square1Element.classList.replace('dark', 'highlight');
+            }
+        }
+    }
     
     function highlightRedKing(sqr) {
-        // get all potential squares that could be highlighted
-        let upLeft = getSquare(sqr.id, 'upLeft');
-        let upRight = getSquare(sqr.id, 'upRight');
-        let downLeft = getSquare(sqr.id, 'downLeft');
-        let downRight = getSquare(sqr.id, 'downRight');
-        let upLeftAtk = getSquare(upLeft, 'upLeft');
-        let upRightAtk = getSquare(upRight, 'upRight');
-        let downLeftAtk = getSquare(downLeft, 'downLeft');
-        let downRightAtk = getSquare(downRight, 'downRight');
-        // if upLeft is valid
-        if(upLeft != -1){
-            // if upLeft has a pawn in it
-            if(document.getElementById(upLeft).hasChildNodes()){
-                // if the pawn in upLeft is black (enemy)
-                if(document.getElementById(upLeft).firstChild.classList.contains('black')){
-                    // if upLeftAtk is a valid square
-                    if(upLeftAtk != -1){
-                        // if upLeftAtk is empty
-                        if(document.getElementById(upLeftAtk).hasChildNodes() == false){
-                            // highlight upLeftAtk
-                            document.getElementById(upLeftAtk).classList.replace('dark', 'highlight');
-                            currAttackedPawn = document.getElementById(upLeft).firstChild;
-                            attackingSquare = document.getElementById(upLeftAtk);
-                        }
-                    }
-                }
-            }
-            else{ // else highlight upLeft
-                document.getElementById(upLeft).classList.replace('dark', 'highlight');
-            }
-        }
-        // if upRight is valid
-        if(upRight != -1){
-            // if upRight has a pawn in it
-            if(document.getElementById(upRight).hasChildNodes()){
-                // if the pawn in upRight is black
-                if(document.getElementById(upRight).firstChild.classList.contains('black')){
-                    // if upRightAtk is a valid square
-                    if(upRightAtk != -1){
-                        // if upRightAtk is empty
-                        if(document.getElementById(upRightAtk).hasChildNodes() == false){
-                            // highlight upRightAtk
-                            document.getElementById(upRightAtk).classList.replace('dark', 'highlight');
-                            currAttackedPawn = document.getElementById(upRight).firstChild;
-                            attackingSquare = document.getElementById(upRightAtk);
-                        }
-                    }
-                }
-            }
-            else{ // else highlight upRight
-                document.getElementById(upRight).classList.replace('dark', 'highlight');
-            }
-        }
-
-        if(downLeft != -1){
-            // if downLeft has a pawn in it
-            if(document.getElementById(downLeft).hasChildNodes()){
-                // if the pawn in downLeft is black
-                if(document.getElementById(downLeft).firstChild.classList.contains('black')){
-                    // if downLeftAtk is a valid square
-                    if(downLeftAtk != -1){
-                        // if downLeftAtk is empty
-                        if(document.getElementById(downLeftAtk).hasChildNodes() == false){
-                            // highlight downLeftAtk
-                            document.getElementById(downLeftAtk).classList.replace('dark', 'highlight');
-                            currAttackedPawn = document.getElementById(downLeft).firstChild;
-                            attackingSquare = document.getElementById(downLeftAtk);
-                        }
-                    }
-                }
-            }
-            else{ // else highlight downLeft
-                document.getElementById(downLeft).classList.replace('dark', 'highlight');
-            }
-        }
-        // if downRight downRight is valid
-        if(downRight != -1){
-            // if downRight has a pawn in it
-            if(document.getElementById(downRight).hasChildNodes()){
-                // if the pawn in downRight is black
-                if(document.getElementById(downRight).firstChild.classList.contains('black')){
-                    // if downRightAtk is a valid square
-                    if(downRightAtk != -1){
-                        // if downRightAtk is empty
-                        if(document.getElementById(downRightAtk).hasChildNodes() == false){
-                            // highlight downRightAtk
-                            document.getElementById(downRightAtk).classList.replace('dark', 'highlight');
-                            currAttackedPawn = document.getElementById(downRight).firstChild;
-                            attackingSquare = document.getElementById(downRightAtk);
-                        }
-                    }
-                }
-            }
-            else{ // else highlight downRight
-                document.getElementById(downRight).classList.replace('dark', 'highlight');
-            }
-        }
-
-    } 
+        tryHighlight(sqr, 'upLeft', 'upLeft', 'black');
+        tryHighlight(sqr, 'upRight', 'upRight', 'black');
+        tryHighlight(sqr, 'downLeft', 'downLeft', 'black');
+        tryHighlight(sqr, 'downRight', 'downRight', 'black');
+    }
+    
     function highlightBlackKing(sqr) {
-        // get all potential squares that could be highlighted
-        let upLeft = getSquare(sqr.id, 'upLeft');
-        let upRight = getSquare(sqr.id, 'upRight');
-        let downLeft = getSquare(sqr.id, 'downLeft');
-        let downRight = getSquare(sqr.id, 'downRight');
-        let upLeftAtk = getSquare(upLeft, 'upLeft');
-        let upRightAtk = getSquare(upRight, 'upRight');
-        let downLeftAtk = getSquare(downLeft, 'downLeft');
-        let downRightAtk = getSquare(downRight, 'downRight');
-        // if upLeft is valid
-        if(upLeft != -1){
-            // if upLeft has a pawn in it
-            if(document.getElementById(upLeft).hasChildNodes()){
-                // if the pawn in upLeft is red (enemy)
-                if(document.getElementById(upLeft).firstChild.classList.contains('red')){
-                    // if upLeftAtk is a valid square
-                    if(upLeftAtk != -1){
-                        // if upLeftAtk is empty
-                        if(document.getElementById(upLeftAtk).hasChildNodes() == false){
-                            // highlight upLeftAtk
-                            document.getElementById(upLeftAtk).classList.replace('dark', 'highlight');
-                            currAttackedPawn = document.getElementById(upLeft).firstChild;
-                            attackingSquare = document.getElementById(upLeftAtk);
-                        }
-                    }
-                }
-            }
-            else{ // else highlight upLeft
-                document.getElementById(upLeft).classList.replace('dark', 'highlight');
-            }
-        }
-        // if upRight is valid
-        if(upRight != -1){
-            // if upRight has a pawn in it
-            if(document.getElementById(upRight).hasChildNodes()){
-                // if the pawn in upRight is red
-                if(document.getElementById(upRight).firstChild.classList.contains('red')){
-                    // if upRightAtk is a valid square
-                    if(upRightAtk != -1){
-                        // if upRightAtk is empty
-                        if(document.getElementById(upRightAtk).hasChildNodes() == false){
-                            // highlight upRightAtk
-                            document.getElementById(upRightAtk).classList.replace('dark', 'highlight');
-                            currAttackedPawn = document.getElementById(upRight).firstChild;
-                            attackingSquare = document.getElementById(upRightAtk);
-                        }
-                    }
-                }
-            }
-            else{ // else highlight upRight
-                document.getElementById(upRight).classList.replace('dark', 'highlight');
-            }
-        }
-
-        if(downLeft != -1){
-            // if downLeft has a pawn in it
-            if(document.getElementById(downLeft).hasChildNodes()){
-                // if the pawn in downLeft is red
-                if(document.getElementById(downLeft).firstChild.classList.contains('red')){
-                    // if downLeftAtk is a valid square
-                    if(downLeftAtk != -1){
-                        // if downLeftAtk is empty
-                        if(document.getElementById(downLeftAtk).hasChildNodes() == false){
-                            // highlight downLeftAtk
-                            document.getElementById(downLeftAtk).classList.replace('dark', 'highlight');
-                            currAttackedPawn = document.getElementById(downLeft).firstChild;
-                            attackingSquare = document.getElementById(downLeftAtk);
-                        }
-                    }
-                }
-            }
-            else{ // else highlight downLeft
-                document.getElementById(downLeft).classList.replace('dark', 'highlight');
-            }
-        }
-        // if downRight downRight is valid
-        if(downRight != -1){
-            // if downRight has a pawn in it
-            if(document.getElementById(downRight).hasChildNodes()){
-                // if the pawn in downRight is red
-                if(document.getElementById(downRight).firstChild.classList.contains('red')){
-                    // if downRightAtk is a valid square
-                    if(downRightAtk != -1){
-                        // if downRightAtk is empty
-                        if(document.getElementById(downRightAtk).hasChildNodes() == false){
-                            // highlight downRightAtk
-                            document.getElementById(downRightAtk).classList.replace('dark', 'highlight');
-                            currAttackedPawn = document.getElementById(downRight).firstChild;
-                            attackingSquare = document.getElementById(downRightAtk);
-                        }
-                    }
-                }
-            }
-            else{ // else highlight downRight
-                document.getElementById(downRight).classList.replace('dark', 'highlight');
-            }
-        }
-    } 
-
+        tryHighlight(sqr, 'upLeft', 'upLeft', 'red');
+        tryHighlight(sqr, 'upRight', 'upRight', 'red');
+        tryHighlight(sqr, 'downLeft', 'downLeft', 'red');
+        tryHighlight(sqr, 'downRight', 'downRight', 'red');
+    }
 
     function highlightBlack(sqr) {
-        // get all potential squares that could be highlighted
-        let downLeft = getSquare(sqr.id, 'downLeft');
-        let downRight = getSquare(sqr.id, 'downRight');
-        let downLeftAtk = getSquare(downLeft, 'downLeft');
-        let downRightAtk = getSquare(downRight, 'downRight');   
-        // if downLeft downLeft is valid
-        if(downLeft != -1){
-            // if downLeft has a pawn in it
-            if(document.getElementById(downLeft).hasChildNodes()){
-                // if the pawn in downLeft is red
-                if(document.getElementById(downLeft).firstChild.classList.contains('red')){
-                    // if downLeftAtk is a valid square
-                    if(downLeftAtk != -1){
-                        // if downLeftAtk is empty
-                        if(document.getElementById(downLeftAtk).hasChildNodes() == false){
-                            // highlight downLeftAtk
-                            document.getElementById(downLeftAtk).classList.replace('dark', 'highlight');
-                            currAttackedPawn = document.getElementById(downLeft).firstChild;
-                            attackingSquare = document.getElementById(downLeftAtk);
-                        }
-                    }
-                }
-            }
-            else{ // else highlight downLeft
-                document.getElementById(downLeft).classList.replace('dark', 'highlight');
-            }
-        }
-        // if downRight downRight is valid
-        if(downRight != -1){
-            // if downRight has a pawn in it
-            if(document.getElementById(downRight).hasChildNodes()){
-                // if the pawn in downRight is red
-                if(document.getElementById(downRight).firstChild.classList.contains('red')){
-                    // if downRightAtk is a valid square
-                    if(downRightAtk != -1){
-                        // if downRightAtk is empty
-                        if(document.getElementById(downRightAtk).hasChildNodes() == false){
-                            // highlight downRightAtk
-                            document.getElementById(downRightAtk).classList.replace('dark', 'highlight');
-                            currAttackedPawn = document.getElementById(downRight).firstChild;
-                            attackingSquare = document.getElementById(downRightAtk);
-                        }
-                    }
-                }
-            }
-            else{ // else highlight downRight
-                document.getElementById(downRight).classList.replace('dark', 'highlight');
-            }
-        }
-
+        tryHighlight(sqr, 'downLeft', 'downLeft', 'red');
+        tryHighlight(sqr, 'downRight', 'downRight', 'red');
     }
 
     function highlightRed(sqr) {
-        // get all potential squares that could be highlighted
-        let upLeft = getSquare(sqr.id, 'upLeft');
-        let upRight = getSquare(sqr.id, 'upRight');
-        let upLeftAtk = getSquare(upLeft, 'upLeft');
-        let upRightAtk = getSquare(upRight, 'upRight');   
-        // if upLeft upLeft is valid
-        if(upLeft != -1){
-            // if upLeft has a pawn in it
-            if(document.getElementById(upLeft).hasChildNodes()){
-                // if the pawn in upLeft is black
-                if(document.getElementById(upLeft).firstChild.classList.contains('black')){
-                    // if upLeftAtk is a valid square
-                    if(upLeftAtk != -1){
-                        // if upLeftAtk is empty
-                        if(document.getElementById(upLeftAtk).hasChildNodes() == false){
-                            // highlight upLeftAtk
-                            document.getElementById(upLeftAtk).classList.replace('dark', 'highlight');
-                            currAttackedPawn = document.getElementById(upLeft).firstChild;
-                            attackingSquare = document.getElementById(upLeftAtk);
-                        }
-                    }
-                }
-            }
-            else{ // else highlight upLeft
-                document.getElementById(upLeft).classList.replace('dark', 'highlight');
-            }
-        }
-        // if upRight is valid
-        if(upRight != -1){
-            // if upRight has a pawn in it
-            if(document.getElementById(upRight).hasChildNodes()){
-                // if the pawn in upRight is black
-                if(document.getElementById(upRight).firstChild.classList.contains('black')){
-                    // if upRightAtk is a valid square
-                    if(upRightAtk != -1){
-                        // if upRightAtk is empty
-                        if(document.getElementById(upRightAtk).hasChildNodes() == false){
-                            // highlight upRightAtk
-                            document.getElementById(upRightAtk).classList.replace('dark', 'highlight');
-                            currAttackedPawn = document.getElementById(upRight).firstChild;
-                            attackingSquare = document.getElementById(upRightAtk);
-                        }
-                    }
-                }
-            }
-            else{ // else highlight upRight
-                document.getElementById(upRight).classList.replace('dark', 'highlight');
-            }
-        }
-    } 
-
+        tryHighlight(sqr, 'upLeft', 'upLeft', 'black');
+        tryHighlight(sqr, 'upRight', 'upRight', 'black');
+    }
 
     function highlight(sqr){
         let currSquare = document.getElementById(sqr.id);
