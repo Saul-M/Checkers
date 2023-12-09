@@ -7,9 +7,39 @@
     <title>Chess for Dummies</title>
 </head>
 <body>
+    <div id = "options">
+        <form>
+            <h1>Options</h1>
+            <h2>Board Size</h2>
+            <input checked type="radio" id="8x8" name="boardSize" value="8x8">
+            <label for="8x8">8x8</label><br>
+            <input type="radio" id="10x10" name="boardSize" value="10x10">
+            <label for="10x10">10x10</label><br>
+            <h2>Board Color</h2>
+            <!-- set color for dark squares in hex -->
+            <input type="color" id="darkSquareColor" name="darkSquareColor" value="#000000">
+            <label for="darkSquareColor">Dark Squares Color</label><br>
+            <!-- set color for light squares in hex -->
+            <input type="color" id="lightSquareColor" name="lightSquareColor" value="#FFFFFF">
+            <label for="lightSquareColor">Light Squares Color</label><br>
+            <h2>Player 1 Color</h2>
+            <!-- set color for player 1 pieces in hex -->
+            <input type="color" id="player1Color" name="player1Color" value="#FF0000">
+            <label for="player1Color">Player 1 Pawn Color</label><br>
+            <h2>Player 2 Color</h2>
+            <!-- set color for player 2 pieces in hex -->
+            <input type="color" id="player2Color" name="player2Color" value="#000000">
+            <label for="player2Color">Player 2 Pawn Color</label><br>
+            <input type="submit" value="Submit">
+        </form>
+    </div>
+
     <div class="gameDisplay">
 
-        <p >Current: <div id = "turnDisplay">red</div></p>
+        <p>Current: <div id = "turnDisplay">red</div></p>
+        <p> # of red pieces: <div id = "redPiecesDisplay"></div></p>
+        <p> # of black pieces: <div id = "blackPiecesDisplay"></div></p>
+        <p> timer <div id = "timerDisplay"></div></p>
         
 
         <div id="board">
@@ -19,6 +49,6 @@
     </div>
 
     
-    <script src="./script.js"></script>
+    <script src="./checkersScript.js"></script>
 </body>
 </html>

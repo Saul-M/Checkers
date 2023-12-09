@@ -50,6 +50,13 @@ body {
     border: #fff solid;
     display: inline-block;
 }
+.king {
+    height: 46px;
+    width: 46px;
+    border-radius: 50%;
+    border: #e4d907 solid;
+    display: inline-block;
+}
 
 .gameDisplay {
     display: flex;
