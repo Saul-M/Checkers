@@ -58,7 +58,6 @@ function startGame(){
     }
 
     var makingMove = false;
-    var isMoving = false;
     createBoard(rows, columns);
     makePawns(rows, columns);
     var allSquares = document.getElementsByClassName("square");
@@ -187,6 +186,9 @@ function startGame(){
                     console.log("can take again"); 
                     makingMove = true;
                     highlightRetakes();
+                    if(currTurn == 'black' && gameMode == 'pvc'){
+                        moveTo(attackingSquares[0]);
+                    }
                 }
             }
             // if the pawn is at the end of the board, make it a king
@@ -220,6 +222,7 @@ function startGame(){
     
     function canMoveToSquare(currIndex, direction, enemyColor) {
         // Get the ID of the square in the given direction
+        console.log("canMoveToSquare", currIndex, direction, enemyColor);
         let newSquare = getSquare(currIndex, direction);
     
         // If the square exists (i.e., it's not off the board)
@@ -760,17 +763,98 @@ function startGame(){
         //console.log(redPawns);
     }
     createPawnArrays();
-}
 
-
-function makeBlackMove(){
-    console.log("makeBlackMove");
-    // get all black pawns that can move
-    let movableBlackPawns = []
-    for(let i = 0; i < blackPawns.length; i++){
-        if(canMoveBlack(blackPawns[i])){
-            movableBlackPawns.push(blackPawns[i]);
+    function makeBlackMove(){
+        // if the game mode is single player or it isn't black's turn
+        if(gameMode != 'pvc' || currTurn != 'black'){
+            return;
         }
+        console.log("makeBlackMove");
+        // get all black pawns that can move
+        console.log("blackmpawns:", blackPawns);
+        let movableBlackPawns = []
+        let capturingBlackPawns = []
+        for(let i = 0; i < blackPawns.length; i++){
+            currPawn = blackPawns[i].id;
+            currSquare = currPawn.parentNode;
+            console.log(currSquare);
+            // if currSquare is not null
+            if(currSquare != null){
+                currSquareIndex = currSquare.id;
+                console.log("currSquareIndex", currSquareIndex);
+                if(canMoveToSquare(currSquareIndex, 'downLeft', 'red') || canMoveToSquare(currSquareIndex, 'downRight', 'red')){
+                    movableBlackPawns.push(blackPawns[i]);
+                    if(isCaptureMove(currSquareIndex, 'downLeft') || isCaptureMove(currSquareIndex, 'downRight')){
+                        capturingBlackPawns.push(blackPawns[i]);
+                    }
+                }
+                // if the pawn is a king
+                if(blackPawns[i].isKing){
+                    if(canMoveToSquare(currSquareIndex, 'upLeft', 'red') || canMoveToSquare(currSquareIndex, 'upRight', 'red')){
+                        movableBlackPawns.push(blackPawns[i]);
+                        if(isCaptureMove(currSquareIndex, 'upLeft') || isCaptureMove(currSquareIndex, 'upRight')){
+                            capturingBlackPawns.push(blackPawns[i]);
+                        }
+                    }
+                }
+            }
+        }
+        console.log("movableBlackPawns", movableBlackPawns);
+        // choose a random black pawn that can move
+        let randPawn;
+        if(capturingBlackPawns.length > 0){
+            let randIndex = Math.floor(Math.random() * capturingBlackPawns.length);
+            randPawn = capturingBlackPawns[randIndex];
+        } else {
+            let randIndex = Math.floor(Math.random() * movableBlackPawns.length);
+            randPawn = movableBlackPawns[randIndex];
+        }
+        // get the square of the random pawn
+        let randSquare = randPawn.id.parentNode;
+        gPawn = randPawn.id;
+        // highlight the squares that the pawn can move to
+        showMoves(gPawn);
+        // get all highlighted squares
+        let highlightedSquares = document.getElementsByClassName("highlight");
+        // choose a random highlighted square
+        let randHighlightedSquareIndex = Math.floor(Math.random() * highlightedSquares.length);
+        let randHighlightedSquare = highlightedSquares[randHighlightedSquareIndex];
+        // move the pawn to the random highlighted square
+        moveTo(randHighlightedSquare);
     }
-    console.log("movableBlackPawns", movableBlackPawns);
+
+    function isCaptureMove(currSquareIndex, direction){
+        // Get the ID of the square one step away in the given direction
+        let square1 = getSquare(currSquareIndex, direction);
+
+        // Check if the square one step away is valid
+        if (square1 != -1) {
+            // Get the element of the square one step away
+            let square1Element = document.getElementById(square1);
+
+            // Check if the square one step away has a child node (i.e., a pawn)
+            if (square1Element.hasChildNodes()) {
+                // Check if the pawn in the square one step away is of the enemy color
+                if (square1Element.firstChild.classList.contains('red')) {
+                    // Get the ID of the square two steps away in the given direction
+                    let square2 = getSquare(square1, direction);
+
+                    // Check if the square two steps away is valid
+                    if (square2 != -1) {
+                        // Get the element of the square two steps away
+                        let square2Element = document.getElementById(square2);
+
+                        // Check if the square two steps away doesn't have a child node (i.e., is empty)
+                        if (!square2Element.hasChildNodes()) {
+                            // If all conditions are met, the pawn can attack
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        // If any of the conditions is not met, the pawn can't attack
+        return false;
+    }
 }
+
