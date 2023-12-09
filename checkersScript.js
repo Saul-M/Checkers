@@ -493,6 +493,37 @@ function startGame(){
 
     function checkGameOver(){
         // if there are no more red pawns, black wins
+        blackCanMove = false;
+        for(let i = 0; i < blackPawns.length; i++){
+            currPawn = blackPawns[i].id;
+            currSquare = currPawn.parentNode;
+            currSquareIndex = currSquare.id;
+            if(canMoveToSquare(currSquareIndex, 'downLeft', 'red') || canMoveToSquare(currSquareIndex, 'downRight', 'red')){
+                blackCanMove = true;
+            }
+            // if the pawn is a king
+            if(blackPawns[i].isKing){
+                if(canMoveToSquare(currSquareIndex, 'upLeft', 'red') || canMoveToSquare(currSquareIndex, 'upRight', 'red')){
+                    blackCanMove = true;
+                }
+            }
+        }
+        redCanMove = false;
+        for(let i = 0; i < redPawns.length; i++){
+            currPawn = redPawns[i].id;
+            currSquare = currPawn.parentNode;
+            currSquareIndex = currSquare.id;
+            if(canMoveToSquare(currSquareIndex, 'upLeft', 'black') || canMoveToSquare(currSquareIndex, 'upRight', 'black')){
+                redCanMove = true;
+            }
+            // if the pawn is a king
+            if(redPawns[i].isKing){
+                if(canMoveToSquare(currSquareIndex, 'downLeft', 'black') || canMoveToSquare(currSquareIndex, 'downRight', 'black')){
+                    redCanMove = true;
+                }
+            }
+        }
+        // if there are no more red pawns, black wins
         if(redPawns.length == 0){
             alert("Black wins! There are no more red pawns");
         }
@@ -501,15 +532,13 @@ function startGame(){
             alert("Red wins! There are no more black pawns");
         }
         // if there are no more moves for red, black wins
-        // else if(!redPawns.some(canMoveRed)){
-        //     console.log("no moves for red");
-        //     alert("Black wins! There are no more moves for red");
-        // }
-        // // if there are no more moves for black, red wins
-        // else if(!blackPawns.some(canMoveBlack)){
-        //     console.log("no moves for black");
-        //     alert("Red wins! There are no more moves for black");
-        // }
+        else if(!redCanMove){
+            alert("Black wins! There are no more moves for red");
+        }
+        // if there are no more moves for black, red wins
+        else if(!blackCanMove){
+            alert("Red wins! There are no more moves for black");
+        }
     }
     function toggleTurn(){
         if(currTurn == 'black'){
